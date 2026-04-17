@@ -8,7 +8,7 @@ class SalesSilverTransformer(BaseExtractor):
     def __init__(self):
         super().__init__(config_path=None, layer="silver")
 
-        # ✅ Use Generic Loader (handles Spark + Delta)
+        # Use Generic Loader (handles Spark + Delta)
         self.loader = SparkLoader()
         self.spark = self.loader.spark
 
@@ -32,6 +32,10 @@ class SalesSilverTransformer(BaseExtractor):
         # -------------------------------------------------------
         df = df.withColumn("total_price", col("Quantity") * col("UnitPrice"))
 
+        df_product = df.select(
+            "date", "city", "StockCode", "Description",
+            "Quantity", "UnitPrice", "total_price"
+        )
         # -------------------------------------------------------
         # Aggregate (daily sales)
         # -------------------------------------------------------
@@ -42,16 +46,17 @@ class SalesSilverTransformer(BaseExtractor):
         output_path = "data_lake/silver/sales/online_retail"
 
         # -------------------------------------------------------
-        # Write using generic loader (DELTA 🔥)
+        # Write using generic loader (DELTA)
         # -------------------------------------------------------
         self.loader.write(
             df,
             output_path,
-            format="delta",              # ✅ Delta table
-            partition_cols=["city"],     # ✅ Partitioning
+            format="delta",             
+            partition_cols=["city"],     
             mode="overwrite"
         )
 
+        self.loader.write(df_product, "data_lake/silver/sales/product_grain", format="delta", partition_cols=["city"], mode="overwrite")
         self.logger.info(f"✔ Sales Silver written (Delta) → {output_path}")
 
         return output_path

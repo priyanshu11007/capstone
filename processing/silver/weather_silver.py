@@ -8,7 +8,7 @@ class WeatherSilverTransformer(BaseExtractor):
     def __init__(self):
         super().__init__(config_path=None, layer="silver")
 
-        # ✅ Use Generic Loader
+        #  Use Generic Loader
         self.loader = SparkLoader()
         self.spark = self.loader.spark
 
@@ -42,8 +42,8 @@ class WeatherSilverTransformer(BaseExtractor):
         self.loader.write(
             df,
             output_path,
-            format="delta",              # ✅ Delta table
-            partition_cols=["city"],     # ✅ Partitioning
+            format="delta",              
+            partition_cols=["city"],     
             mode="overwrite"
         )
 

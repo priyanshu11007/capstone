@@ -6,6 +6,11 @@ class SparkLoader:
 
     def __init__(self):
 
+        try:
+            SparkSession.getActiveSession().stop()
+        except:
+            pass
+
         builder = SparkSession.builder \
             .appName("Generic Loader") \
             .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \

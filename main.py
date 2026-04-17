@@ -27,6 +27,9 @@ from processing.gold.sales_weather_gold import SalesWeatherGold
 from processing.gold.dim_date import DimDate
 from processing.gold.dim_location import DimLocation
 from processing.gold.fact_sales_weather import FactSalesWeather
+from processing.gold.dim_product import DimProduct
+from processing.gold.fact_sales_weather_product import FactSalesWeatherProduct
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -127,6 +130,12 @@ def run_dim_location():
 def run_fact():
     FactSalesWeather().extract()
 
+def run_dim_product():
+    DimProduct().extract()
+
+def run_fact_product():
+    FactSalesWeatherProduct().extract()
+
 # ---------------------------------------------------------
 # MAIN
 # ---------------------------------------------------------
@@ -139,7 +148,7 @@ def main():
 
     parser.add_argument(
         "--entity",
-        choices=["weather", "retail_sales", "sales_bronze", "weather_bronze","sales_silver", "weather_silver","gold","dim_date", "dim_location", "fact"],  # ✅ added
+        choices=["weather", "retail_sales", "sales_bronze", "weather_bronze","sales_silver", "weather_silver","gold","dim_date", "dim_location", "fact","dim_product", "fact_product"],  
         help="Run pipeline for a specific entity",
     )
 
@@ -158,37 +167,75 @@ def main():
 
     args = parser.parse_args()
 
-    if args.all or args.entity == "weather":
+    if args.all:
+        logger.info("Running FULL PIPELINE")
+
+        run_weather()
+        logger.info("DONE: weather")
+
+        run_retail(file_name=args.file)
+        logger.info("DONE: retail")
+
+        run_sales_bronze()
+        logger.info("DONE: sales_bronze")
+
+        run_weather_bronze()
+        logger.info("DONE: weather_bronze")
+
+        run_sales_silver()
+        logger.info("DONE: sales_silver")
+
+        run_weather_silver()
+        logger.info("DONE: weather_silver")
+
+        run_gold()
+        logger.info("DONE: gold")
+
+        run_dim_date()
+        run_dim_location()
+        run_dim_product()
+        logger.info("DONE: dimensions")
+
+        run_fact()
+        run_fact_product()
+        logger.info("DONE: facts")
+    elif args.entity == "weather":
         run_weather()
 
-    if args.all or args.entity == "retail_sales":
+    elif args.entity == "retail_sales":
         run_retail(file_name=args.file)
 
-    if args.all or args.entity == "sales_bronze":
+    elif args.entity == "sales_bronze":
         run_sales_bronze()
 
-    if args.entity == "weather_bronze":
+    elif args.entity == "weather_bronze":
         run_weather_bronze()
 
-    if args.entity == "sales_silver":
+    elif args.entity == "sales_silver":
         run_sales_silver()
 
-    if args.entity == "weather_silver":
+    elif args.entity == "weather_silver":
         run_weather_silver()
 
-    if args.entity == "gold":
+    elif args.entity == "gold":
         run_gold()
 
-    if args.entity == "dim_date":
+    elif args.entity == "dim_date":
         run_dim_date()
 
-    if args.entity == "dim_location":
+    elif args.entity == "dim_location":
         run_dim_location()
 
-    if args.entity == "fact":
+    elif args.entity == "dim_product":
+        run_dim_product()
+
+    elif args.entity == "fact":
         run_fact()
 
-    if not args.all and not args.entity:
+    elif args.entity == "fact_product":
+        run_fact_product()
+
+    else:
         parser.print_help()
 
 

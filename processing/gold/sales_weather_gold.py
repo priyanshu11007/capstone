@@ -9,7 +9,7 @@ class SalesWeatherGold(BaseExtractor):
     def __init__(self):
         super().__init__(config_path=None, layer="gold")
 
-        # ✅ Use Generic Loader
+        # Use Generic Loader
         self.loader = SparkLoader()
         self.spark = self.loader.spark
 
@@ -19,7 +19,7 @@ class SalesWeatherGold(BaseExtractor):
         weather_path = "data_lake/silver/weather/open_meteo"
 
         # -------------------------------------------------------
-        # Read using generic loader (DELTA 🔥)
+        # Read using generic loader (DELTA )
         # -------------------------------------------------------
         sales_df = self.loader.read(sales_path, format="delta")
         weather_df = self.loader.read(weather_path, format="delta")
@@ -68,15 +68,15 @@ class SalesWeatherGold(BaseExtractor):
         )
 
         # -------------------------------------------------------
-        # Write using generic loader (DELTA 🔥)
+        # Write using generic loader (DELTA)
         # -------------------------------------------------------
         output_path = "data_lake/gold/sales_weather"
 
         self.loader.write(
             df,
             output_path,
-            format="delta",              # ✅ Delta table
-            partition_cols=["city"],     # ✅ Partition
+            format="delta",              
+            partition_cols=["city"],     
             mode="overwrite"
         )
 

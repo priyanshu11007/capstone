@@ -15,8 +15,6 @@ spark = loader.spark
 
 df = loader.read("data_lake/gold/sales_weather", format="delta")
 df.createOrReplaceTempView("sales_weather")
-
-
 # ---------------------------------------
 # FUNCTIONS (based on your queries)
 # ---------------------------------------
@@ -215,6 +213,48 @@ def query9():
     plt.ylabel("Revenue")
     plt.show()
 
+import matplotlib.pyplot as plt
+
+def query10():
+    print("\n--- Top Products on Rainy Days ---")
+
+    df = loader.read("data_lake/gold/fact_sales_weather_product", format="delta")
+
+    df.createOrReplaceTempView("fact_sales_weather_product")
+
+    result = spark.sql("""
+        SELECT 
+            product_description,
+            SUM(total_price)   AS total_revenue,
+            SUM(Quantity)      AS total_units
+        FROM fact_sales_weather_product
+        WHERE is_rainy = 1
+        GROUP BY product_description
+        ORDER BY total_revenue DESC
+        LIMIT 15
+    """)
+
+    # Show table
+    result.show(truncate=False)
+
+    # Convert to pandas
+    pdf = result.toPandas()
+
+    # ---------------------------------------------------
+    # Plot graph
+    # ---------------------------------------------------
+    plt.figure()
+
+    plt.barh(pdf["product_description"], pdf["total_revenue"])
+
+    plt.xlabel("Total Revenue")
+    plt.ylabel("Product")
+    plt.title("Top 15 Products on Rainy Days")
+
+    plt.gca().invert_yaxis()  # highest on top
+
+    plt.tight_layout()
+    plt.show()
 
 # ---------------------------------------
 # CLI MENU
@@ -232,7 +272,8 @@ def main():
         print("7. Best Day of Week")
         print("8. Peak Conditions")
         print("9. Sales Growth")
-        print("10. Exit")
+        print("10.Top Products on Rainy Days")
+        print("11. Exit")
 
         choice = input("Enter choice: ")
 
@@ -255,7 +296,7 @@ def main():
         elif choice == "9":
             query9()
         elif choice == "10":
-            print("Exiting...")
+            query10()
             break
         else:
             print("Invalid choice!")
