@@ -1,0 +1,58 @@
+apis:
+  openweathermap:
+    base_url: "https://history.openweathermap.org/data/2.5/history/city"
+    api_key: "${OPENWEATHER_API_KEY}"   # set in .env
+    endpoints:
+      historical:
+        path: ""
+        params:
+          type: "hour"
+          units: "metric"
+    retry:
+      max_attempts: 3
+      backoff_factor: 2
+      status_forcelist: [429, 500, 502, 503, 504]
+    timeout: 30
+
+cities:
+  - name: "London"
+    country: "GB"
+    lat: 51.5074
+    lon: -0.1278
+  - name: "Manchester"
+    country: "GB"
+    lat: 53.4808
+    lon: -2.2426
+  - name: "Birmingham"
+    country: "GB"
+    lat: 52.4862
+    lon: -1.8904
+  - name: "Leeds"
+    country: "GB"
+    lat: 53.8008
+    lon: -1.5491
+  - name: "Glasgow"
+    country: "GB"
+    lat: 55.8642
+    lon: -4.2518
+
+ingestion:
+  weather:
+    # We'll pull daily granularity via the free "current" endpoint + One Call history
+    # Using Open-Meteo (free, no key needed) for historical data
+    source: "open_meteo"
+    base_url: "https://archive-api.open-meteo.com/v1/archive"
+    date_range:
+      start: "2022-01-01"
+      end: "2024-12-31"
+    variables:
+      - "temperature_2m_max"
+      - "temperature_2m_min"
+      - "temperature_2m_mean"
+      - "precipitation_sum"
+      - "rain_sum"
+      - "snowfall_sum"
+      - "windspeed_10m_max"
+      - "weathercode"
+    timezone: "Europe/London"
+    output_format: "json"

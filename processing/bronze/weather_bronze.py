@@ -1,0 +1,83 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, explode, arrays_zip, input_file_name, regexp_extract
+from ingestion.base import BaseExtractor
+
+
+class WeatherBronzeTransformer(BaseExtractor):
+
+    def __init__(self):
+        super().__init__(config_path=None, layer="bronze")
+
+        self.spark = (
+            SparkSession.builder
+            .appName("Weather Bronze Transformation")
+            .getOrCreate()
+        )
+
+    def extract(self, **kwargs):
+
+        raw_path = "data_lake/raw/weather/open_meteo"
+
+        self.logger.info("Reading raw weather JSON files...")
+
+        df = self.spark.read.option("multiline", "true").json(raw_path)
+
+        # -------------------------------------------------------
+        # Add file path (to extract city)
+        # -------------------------------------------------------
+        df = df.withColumn("file_path", input_file_name())
+
+        df = df.withColumn(
+            "city",
+            regexp_extract(col("file_path"), "city=([^/]+)", 1)
+        )
+
+        # -------------------------------------------------------
+        # Zip arrays together (CRITICAL STEP)
+        # -------------------------------------------------------
+        df = df.withColumn(
+            "daily_data",
+            arrays_zip(
+                col("daily.time"),
+                col("daily.temperature_2m_max"),
+                col("daily.temperature_2m_min"),
+                col("daily.precipitation_sum")
+            )
+        )
+
+        # -------------------------------------------------------
+        # Explode correctly
+        # -------------------------------------------------------
+        df = df.withColumn("daily_data", explode(col("daily_data")))
+
+        # -------------------------------------------------------
+        # Extract fields
+        # -------------------------------------------------------
+        df = df.select(
+            col("city"),
+            col("daily_data.time").alias("date"),
+            col("daily_data.temperature_2m_max").alias("temp_max"),
+            col("daily_data.temperature_2m_min").alias("temp_min"),
+            col("daily_data.precipitation_sum").alias("precipitation")
+        )
+
+        self.logger.info(f"Weather Bronze rows: {df.count()}")
+
+        # -------------------------------------------------------
+        # Write partitioned
+        # -------------------------------------------------------
+        output_path = "data_lake/bronze/weather/open_meteo"
+
+        (
+            df.write
+            .mode("overwrite")
+            .partitionBy("city")
+            .parquet(output_path)
+        )
+
+        self.logger.info(f"✔ Written Weather Bronze → {output_path}")
+
+        return output_path
+
+    def validate(self, data):
+        return True
