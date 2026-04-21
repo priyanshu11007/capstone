@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  airflow:
+    image: apache/airflow:2.8.1
+    container_name: airflow
+    restart: always
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./data_lake:/opt/airflow/data_lake
+      - .:/opt/airflow/project
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com &&
+      airflow scheduler &
+      airflow webserver
+      "

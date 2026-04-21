@@ -1,0 +1,90 @@
+"""
+processing/gold/sales_weather_gold.py
+
+Joins silver sales + silver weather and writes the historical gold
+Delta table with feature engineering.
+
+Schema fixes:
+  - All join columns cast to consistent types before join
+  - All output columns cast explicitly
+  - rolling_7d_sales → DoubleType
+"""
+from loader.spark_loader import SparkLoader
+from pyspark.sql.functions import col, when, avg
+from pyspark.sql.types import DoubleType, IntegerType, StringType
+from pyspark.sql.window import Window
+from ingestion.base import BaseExtractor
+
+
+class SalesWeatherGold(BaseExtractor):
+
+    def __init__(self):
+        super().__init__(config_path=None, layer="gold")
+        self.loader = SparkLoader()
+        self.spark  = self.loader.spark
+
+    def extract(self, **kwargs):
+
+        sales_path   = "data_lake/silver/sales/online_retail"
+        weather_path = "data_lake/silver/weather/open_meteo"
+
+        sales_df   = self.loader.read(sales_path,   format="delta")
+        weather_df = self.loader.read(weather_path, format="delta")
+
+        # ── Align join-key types ─────────────────────────────────────────
+        sales_df   = sales_df.withColumn("city", col("city").cast(StringType()))
+        weather_df = weather_df.withColumn("city", col("city").cast(StringType()))
+
+        # Cast date columns to date type for reliable join
+        sales_df   = sales_df.withColumn("date", col("date").cast("date"))
+        weather_df = weather_df.withColumn("date", col("date").cast("date"))
+
+        # ── Align measure types ──────────────────────────────────────────
+        sales_df   = sales_df.withColumn("total_sales",   col("total_sales").cast(DoubleType()))
+        weather_df = weather_df.withColumn("avg_temp",      col("avg_temp").cast(DoubleType()))
+        weather_df = weather_df.withColumn("precipitation", col("precipitation").cast(DoubleType()))
+
+        # ── Join ─────────────────────────────────────────────────────────
+        df = sales_df.join(weather_df, on=["date", "city"], how="inner")
+
+        # ── Feature engineering ──────────────────────────────────────────
+        df = df.withColumn(
+            "is_rainy",
+            when(col("precipitation") > 0, 1).otherwise(0).cast(IntegerType())
+        )
+
+        df = df.withColumn(
+            "temp_category",
+            when(col("avg_temp") < 10, "Cold")
+            .when((col("avg_temp") >= 10) & (col("avg_temp") < 20), "Moderate")
+            .otherwise("Hot")
+            .cast(StringType())
+        )
+
+        df = df.withColumn(
+            "sales_category",
+            when(col("total_sales") < 500, "Low")
+            .when((col("total_sales") >= 500) & (col("total_sales") < 2000), "Medium")
+            .otherwise("High")
+            .cast(StringType())
+        )
+
+        window_spec = Window.partitionBy("city").orderBy("date").rowsBetween(-7, 0)
+        df = df.withColumn(
+            "rolling_7d_sales",
+            avg("total_sales").over(window_spec).cast(DoubleType())
+        )
+
+        output_path = "data_lake/gold/sales_weather"
+        self.loader.write(
+            df, output_path,
+            format="delta",
+            partition_cols=["city"],
+            mode="overwrite",
+        )
+
+        self.logger.info(f"✔ Gold dataset written (Delta) → {output_path}")
+        return output_path
+
+    def validate(self, data):
+        return True

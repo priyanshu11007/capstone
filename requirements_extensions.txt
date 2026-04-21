@@ -1,0 +1,18 @@
+# requirements_extensions.txt
+# Additional dependencies for Airflow orchestration, DQ checks, and unit tests
+# Install AFTER your existing requirements.txt:
+#   pip install -r requirements_extensions.txt
+
+# ── Unit testing ─────────────────────────────────────────────────────────────
+pytest==7.4.4
+pytest-mock==3.12.0
+
+# ── Airflow (pick ONE install method) ────────────────────────────────────────
+# Option A: Local pip install (simple, recommended for dev/testing)
+apache-airflow==2.8.1
+
+# Option B: If you prefer Docker, skip the line above and follow
+#           the Docker setup in the run guide.
+
+# ── Data quality (no extra deps — uses pyspark already in requirements.txt) ──
+# (dq/data_quality.py uses only pyspark, pathlib, json, dataclasses)
